@@ -1,10 +1,8 @@
-# xPath Finder
+# xPath 2
 
-Firefox & Chrome plugin to get the elements xPath.
+Firefox & Chrome plugin to get the elements xPath. xPath 2 is forked from original *https://github.com/trembacz/xpath-finder*.
 
-https://addons.mozilla.org/addon/xpath_finder/
-
-https://chrome.google.com/webstore/detail/xpath-finder/ihnknokegkbpmofmafnkoadfjkhlogph
+Coming soon...
 
 ## Options
 ![](https://github.com/cuong-vm/xpath-finder/blob/master/screenshots/option.png)

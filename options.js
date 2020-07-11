@@ -34,6 +34,7 @@ function saveOptions(e) {
     inspector: document.querySelector('#inspector').checked,
     clipboard: document.querySelector('#copy').checked,
     shortid: document.querySelector('#shortid').checked,
+    robotcmds: document.querySelector('#robotcmds').checked,
     position: document.querySelector('#position').value,
     shortcut: document.querySelector('#shortcut').value
   }, () => {
@@ -52,12 +53,14 @@ function restoreOptions() {
     inspector: true,
     clipboard: true,
     shortid: true,
+    robotcmds: true,
     position: 'bl',
     shortcut: 'U'
   }, items => {
     document.querySelector('#inspector').checked = items.inspector;
     document.querySelector('#copy').checked = items.clipboard;
     document.querySelector('#shortid').checked = items.shortid;
+    document.querySelector('#robotcmds').checked = items.robotcmds;
     document.querySelector('#position').value = items.position;
     document.querySelector('#shortcut').value = items.shortcut;
   });

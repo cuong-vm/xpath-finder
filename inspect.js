@@ -34,6 +34,7 @@ var xPathFinder = xPathFinder || (() => {
           document.body.appendChild(contentHtml);
         }
         this.options.clipboard && ( this.copyText(this.XPath) );
+        this.options.robotcmds && this.forecastRobotCommands(e.target, this.XPath);
       }
     }
 
@@ -43,6 +44,7 @@ var xPathFinder = xPathFinder || (() => {
         inspector: true,
         clipboard: true,
         shortid: true,
+        robotcmds: true,
         position: 'bl'
       }, this.setOptions);
       (promise && promise.then) && (promise.then(this.setOptions()));
@@ -147,13 +149,16 @@ var xPathFinder = xPathFinder || (() => {
       // add listeners for all frames and root
       document.addEventListener('click', this.getData, true);
       this.options.inspector && ( document.addEventListener('mouseover', this.draw) );
-      const frameLength = window.parent.frames.length
-      for (let i = 0 ; i < frameLength; i++) {
-        let frame = window.parent.frames[i];
-        frame.document.addEventListener('click', e => this.getData(e, frame.frameElement), true);
-        this.options.inspector && (frame.document.addEventListener('mouseover', this.draw) );
+      try {
+        const frameLength = window.parent.frames.length
+        for (let i = 0 ; i < frameLength; i++) {
+          let frame = window.parent.frames[i];
+          frame.document.addEventListener('click', e => this.getData(e, frame.frameElement), true);
+          this.options.inspector && (frame.document.addEventListener('mouseover', this.draw) );
+        }
+      } catch (e) {
+        this.warn(e.message);
       }
-
     }
 
     deactivate() {
@@ -168,13 +173,16 @@ var xPathFinder = xPathFinder || (() => {
       // remove listeners for all frames and root
       document.removeEventListener('click', this.getData, true);
       this.options && this.options.inspector && ( document.removeEventListener('mouseover', this.draw) );
-      const frameLength = window.parent.frames.length
-      for (let i = 0 ; i < frameLength; i++) {
-        let frameDocument = window.parent.frames[i].document
-        frameDocument.removeEventListener('click', this.getData, true);
-        this.options && this.options.inspector && ( frameDocument.removeEventListener('mouseover', this.draw) );
+      try {
+        const frameLength = window.parent.frames.length
+        for (let i = 0 ; i < frameLength; i++) {
+          let frameDocument = window.parent.frames[i].document
+          frameDocument.removeEventListener('click', this.getData, true);
+          this.options && this.options.inspector && ( frameDocument.removeEventListener('mouseover', this.draw) );
+        }
+      } catch (e) {
+        this.warn(e.message);
       }
-      
     }
 
     getXPath(el) {
@@ -315,6 +323,14 @@ var xPathFinder = xPathFinder || (() => {
       });
     }
 
+    warn(msg) {
+      if (console.warn) {
+        console.warn('[xPath 2]', msg);
+      } else {
+        console.log('[xPath 2]', msg);
+      }
+    }
+
     isBlank(s) {
       return s == null || s.trim() === '';
     }
@@ -327,8 +343,43 @@ var xPathFinder = xPathFinder || (() => {
       }
     }
 
+    isElementDisabled(element) {
+      return element.disabled;
+    }
+
+    isElementHidden(element) {
+      if (element.offsetParent === null) {
+        return true;
+      } else {
+        let style = window.getComputedStyle(element);
+        return style.display === 'none';
+      }
+    }
+
     getLowerTagName(element) {
       return (element.tagName || '').toLowerCase();
+    }
+
+    getLowerType(element) {
+      return (element.type || '').toLowerCase();
+    }
+
+    getElementValue(element, limit) {
+      let s = null;
+      if (typeof element['value'] !== 'undefined') {
+        s = element['value'];
+      } else if (element['innerText'] !== 'undefined') {
+        s = element['innerText'];
+      }
+      if (this.isBlank(s)) {
+        s = '';
+      } else {
+        s = s.replace(/(?:\r\n|\r|\n)/g, ' ');
+        if (s.length > limit) {
+          s = s.substr(0, limit);
+        }
+      }
+      return s;
     }
 
     getSortedClassList(element) {
@@ -356,27 +407,123 @@ var xPathFinder = xPathFinder || (() => {
       let id = element.id;
       let name = element.name;
       let tagName = this.getLowerTagName(element);
-  
       if (!this.isBlank(id) && this.isUniqSelector(`#${id}`)) {
-        path = `*[@id='${id}']`;
-      } else if (!this.isBlank(id) && this.isUniqSelector(`${tagName}[id='${id}']`)) {
-        path = `${tagName}[@id='${id}']`;
-      } else if (!this.isBlank(name) && this.isUniqSelector(`${tagName}[name='${name}']`)) {
-        path = `${tagName}[@name='${name}']`;
+        path = `*[@id="${id}"]`;
+      } else if (!this.isBlank(id) && this.isUniqSelector(`${tagName}[id="${id}"]`)) {
+        path = `${tagName}[@id="${id}"]`;
+      } else if (!this.isBlank(name) && this.isUniqSelector(`${tagName}[name="${name}"]`)) {
+        path = `${tagName}[@name="${name}"]`;
       } else if (checkCssClass) {
         let classList = this.getSortedClassList(element);
         let size = classList.length;
-  
         for (let i = 0; i < size; i++) {
           let className = classList[i];
           if (!this.isBlank(className) && this.isUniqSelector(`${tagName}.${className}`)) {
-            path = `${tagName}[contains(@class, '${className}')]`;
+            path = `${tagName}[contains(@class, "${className}")]`;
             break;
           }
         }
       }
-  
       return path;
+    }
+
+    createRobotStatusCmds(info, buf) {
+      if (info.disabled) {
+        buf.push(`element should be disabled  ${info.xpath}`);
+      } else {
+        buf.push(`element should be enabled  ${info.xpath}`);
+      }
+      if (info.hidden) {
+        buf.push(`element should be not visible  ${info.xpath}`);
+      } else {
+        buf.push(`element should be visible  ${info.xpath}`);
+      }
+    }
+
+    createRobotPasswordCmds(info, buf) {
+      if (this.isBlank(info.content)) {
+        buf.push(`clear element text  ${info.xpath}`);
+      } else {
+        buf.push(`input password  ${info.xpath}  ${info.content}`);
+      }
+      buf.push(`press keys  ${info.xpath}  RETURN`);
+    }
+
+    createRobotTextFieldCmds(info, buf) {
+      if (this.isBlank(info.content)) {
+        buf.push(`clear element text  ${info.xpath}`);
+        buf.push(`input text  ${info.xpath}  something-you-know`);
+      } else {
+        buf.push(`input text  ${info.xpath}  ${info.content}`);
+        if (info.tagName === 'input') {
+          buf.push(`textfield value should be  ${info.xpath}  ${info.content}`);
+          buf.push(`textfield should contain  ${info.xpath}  ${info.content}`);
+        } else if (info.tagName === 'textarea') {
+          buf.push(`textarea value should be  ${info.xpath}  ${info.content}`);
+          buf.push(`textarea should contain  ${info.xpath}  ${info.content}`);
+        }
+      }
+      if (info.tagName === 'input') {
+        buf.push(`press keys  ${info.xpath}  RETURN`);
+      }
+    }
+
+    createRobotTextCmds(info, buf) {
+      if (!this.isBlank(info.content)) {
+        buf.push(`element should contain  ${info.xpath}  ${info.content}`);
+        buf.push(`element text should be  ${info.xpath}  ${info.content}`);
+      }
+    }
+
+    /**
+     * Forecast some Robot commands for the target element and log them all to Console
+     * @param {DOMElement} element Target element 
+     * @param {string} xpath XPath to the element 
+     */
+    forecastRobotCommands(element, xpath) {
+      const info = {
+        tagName: this.getLowerTagName(element),
+        type: this.getLowerType(element),
+        disabled: this.isElementDisabled(element),
+        hidden: this.isElementHidden(element),
+        content: this.getElementValue(element, 50),
+        xpath
+      };
+      const buf = [];
+
+      switch (info.tagName) {
+        case 'input':
+          let goOn = false;
+          switch (info.type) {
+            case 'button':
+            case 'checkbox':
+            case 'radio':
+            case 'submit':
+              buf.push(`click element  ${info.xpath}`);
+              break;
+            case 'password':
+              this.createRobotPasswordCmds(info, buf);
+              break;
+            default:
+              goOn = true;
+          }
+          if (!goOn) break;
+        case 'select':
+        case 'textarea':
+          this.createRobotTextFieldCmds(info, buf);
+          this.createRobotStatusCmds(info, buf);
+          break;
+        default:
+          buf.push(`click element  ${info.xpath}`);
+          buf.push(`double click element  ${info.xpath}`);
+          this.createRobotTextCmds(info, buf);
+          this.createRobotStatusCmds(info, buf);
+          buf.push(`wait until page contains element  ${info.xpath}`);
+          if (!this.isBlank(info.content)) {
+            buf.push(`wait until page contains  ${info.content}`);
+          }
+      }
+      console.log('[xPath 2] Robot commands:', '\n\t' + buf.join('\n\t'));
     }
   }
 

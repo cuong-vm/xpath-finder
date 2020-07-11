@@ -7,7 +7,7 @@ https://addons.mozilla.org/addon/xpath_finder/
 https://chrome.google.com/webstore/detail/xpath-finder/ihnknokegkbpmofmafnkoadfjkhlogph
 
 ## Options
-![](https://i.imgur.com/4rJqlpp.png)
+![](https://github.com/cuong-vm/xpath-finder/blob/master/screenshots/option.png)
 
 ## Usage
 1. Click on the plugin icon, cursor will be changed to the **crosshair**
@@ -15,14 +15,14 @@ https://chrome.google.com/webstore/detail/xpath-finder/ihnknokegkbpmofmafnkoadfj
 3. Click on the element and his xPath will display in the panel at the bottom of the page
 
 
-![](http://i.imgur.com/dPQwezY.png)
+![](https://github.com/cuong-vm/xpath-finder/blob/master/screenshots/inactive-active.png)
 
-![](https://i.imgur.com/o9cQvp0.png)
+![](https://github.com/cuong-vm/xpath-finder/blob/master/screenshots/select-1.png)
 
-![](https://i.imgur.com/Lj0YW63.png)
+![](https://github.com/cuong-vm/xpath-finder/blob/master/screenshots/select-2.png)
 
-![](https://i.imgur.com/8RsV8fw.png)
+![](https://github.com/cuong-vm/xpath-finder/blob/master/screenshots/select-3.png)
 
-![](https://i.imgur.com/HJl6hFj.png)
+![](https://github.com/cuong-vm/xpath-finder/blob/master/screenshots/select-4.png)
 
-![](https://i.imgur.com/1wOuAJq.png)
+![](https://github.com/cuong-vm/xpath-finder/blob/master/screenshots/select-5.png)

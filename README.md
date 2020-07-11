@@ -1,6 +1,7 @@
 # xPath 2
 
-Firefox & Chrome plugin to get the selected element's XPath and to generate common Robot testing commands related to the element.
+Firefox & Chrome plugin to get the selected element's XPath and to generate common <a href="https://robotframework.org/" target="_blank">Robot</a>
+ testing commands related to the element.
 
 Coming soon... [Being reviewed]
 

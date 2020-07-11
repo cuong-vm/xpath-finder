@@ -1,9 +1,9 @@
 {
   "manifest_version": 2,
-  "name": "xPath Finder",
+  "name": "xPath 2",
   "description": "Click on any element to get the xPath",
-  "homepage_url": "https://github.com/trembacz/xpath-finder",
-  "version": "1.0.2",
+  "homepage_url": "https://github.com/cuong-vm/xpath-finder",
+  "version": "1.0.3",
   "icons": {
     "64": "icons/default-64.png"
   },

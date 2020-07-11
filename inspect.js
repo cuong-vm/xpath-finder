@@ -179,9 +179,16 @@ var xPathFinder = xPathFinder || (() => {
 
     getXPath(el) {
       let nodeElem = el;
-      if (nodeElem.id && this.options.shortid) {
-        return `//*[@id="${nodeElem.id}"]`;
+      let uniqPath = null;
+
+      // Check unique path of current node
+      if (this.options.shortid) {
+        uniqPath = this.findUniqPath(nodeElem, true);
+        if (uniqPath) {
+          return `//${uniqPath}`;
+        }
       }
+
       const parts = [];
       while (nodeElem && nodeElem.nodeType === Node.ELEMENT_NODE) {
         let nbOfPreviousSiblings = 0;
@@ -205,6 +212,15 @@ var xPathFinder = xPathFinder || (() => {
         const nth = nbOfPreviousSiblings || hasNextSiblings ? `[${nbOfPreviousSiblings + 1}]` : '';
         parts.push(prefix + nodeElem.localName + nth);
         nodeElem = nodeElem.parentNode;
+
+        // Check unique path of the parent node
+        if (this.options.shortid && nodeElem) {
+          uniqPath = this.findUniqPath(nodeElem, false);
+          if (uniqPath) {
+            parts.push(`/${uniqPath}`);
+            break;
+          }
+        }
       }
       return parts.length ? '/' + parts.reverse().join('/') : '';
     }
@@ -297,6 +313,70 @@ var xPathFinder = xPathFinder || (() => {
         borderBottomWidth: dimensions[parameter + 'Bottom'] + 'px',
         borderStyle: 'solid'
       });
+    }
+
+    isBlank(s) {
+      return s == null || s.trim() === '';
+    }
+
+    isUniqSelector(sel) {
+      try {
+        return document.querySelectorAll(sel).length === 1;
+      } catch (ex) {
+        return false;
+      }
+    }
+
+    getLowerTagName(element) {
+      return (element.tagName || '').toLowerCase();
+    }
+
+    getSortedClassList(element) {
+      let sortedList = [];
+      let classList = element.classList;
+      if (classList) {
+        let size = classList.length;
+        for (let i = 0; i < size; i++) {
+          sortedList.push(classList[i]);
+        }
+        sortedList = sortedList.sort(function(a, b) {
+          return b.length - a.length
+        });
+      }
+      return sortedList;
+    }
+
+    /**
+     * Find unique path to an element by this order: id, name, class
+     * @param {DOMElement} element Target element 
+     * @param {boolean} checkCssClass Set true to check element's class list 
+     */
+    findUniqPath(element, checkCssClass) {
+      let path = null;
+      let id = element.id;
+      let name = element.name;
+      let tagName = this.getLowerTagName(element);
+  
+      if (!this.isBlank(id) && this.isUniqSelector(`#${id}`)) {
+        path = `*[@id='${id}']`;
+      } else if (!this.isBlank(id) && this.isUniqSelector(`${tagName}[id='${id}']`)) {
+        path = `${tagName}[@id='${id}']`;
+      } else if (!this.isBlank(name) && this.isUniqSelector(`${tagName}[name='${name}']`)) {
+        path = `${tagName}[@name='${name}']`;
+      } else if (checkCssClass) {
+        let classList = this.getSortedClassList(element);
+        let size = classList.length;
+  
+        for (let i = 0; i < size; i++) {
+          let className = classList[i];
+          if (!this.isBlank(className) && this.isUniqSelector(`${tagName}.${className}`)) {
+            path = `${tagName}[contains(@class, '${className}')]`;
+            break;
+          }
+        }
+      }
+  
+      return path;
     }
   }
 

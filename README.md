@@ -1,6 +1,6 @@
 # xPath 2
 
-Firefox & Chrome plugin to get the elements xPath. xPath 2 is forked from original *https://github.com/trembacz/xpath-finder*.
+Firefox & Chrome plugin to get the selected element's XPath and also to generate common Robot testing commands related to the element.
 
 Coming soon...
 

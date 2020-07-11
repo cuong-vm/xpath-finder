@@ -1,6 +1,6 @@
 # xPath 2
 
-Firefox & Chrome plugin to get the selected element's XPath and to generate common <a href="https://robotframework.org/" target="_blank">Robot</a>
+Firefox & Chrome plugin to get the selected element's XPath and to generate common <a href="https://robotframework.org/" target="_blank">Robot framework</a>
  testing commands related to the element.
 
 Coming soon... [Being reviewed]

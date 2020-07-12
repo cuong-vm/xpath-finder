@@ -3,7 +3,9 @@
 Firefox & Chrome plugin to get the selected element's XPath and to generate common <a href="https://robotframework.org/" target="_blank">Robot framework</a>
  testing commands related to the element.
 
-Coming soon... [Being reviewed]
+https://addons.mozilla.org/addon/xpath-2/
+
+Chrome extension coming soon...
 
 ## Options
 ![](https://github.com/cuong-vm/xpath-finder/blob/master/screenshots/option.png)

@@ -5,7 +5,7 @@ Firefox & Chrome plugin to get the selected element's XPath and to generate comm
 
 https://addons.mozilla.org/addon/xpath-2/
 
-Chrome extension coming soon...
+https://chrome.google.com/webstore/detail/xpath-2/mniogbfahfjmogpmelllbadjdhgilemm
 
 ## Options
 ![](https://github.com/cuong-vm/xpath-finder/blob/master/screenshots/option.png)

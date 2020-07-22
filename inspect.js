@@ -335,9 +335,22 @@ var xPathFinder = xPathFinder || (() => {
       return s == null || s.trim() === '';
     }
 
+    isSpecialChar(c) {
+      const sc = ' \t,:;_=\'"`~!@#$%^&*(){}[]';
+      return sc.indexOf(c) >= 0;
+    }
+
     isUniqSelector(sel) {
       try {
         return document.querySelectorAll(sel).length === 1;
+      } catch (ex) {
+        return false;
+      }
+    }
+
+    isUniqXPath(xpath) {
+      try {
+        return this.getElementsByXPath(xpath).length === 1;
       } catch (ex) {
         return false;
       }
@@ -356,6 +369,16 @@ var xPathFinder = xPathFinder || (() => {
       }
     }
 
+    getElementsByXPath(xpath) {
+      const results = [];
+      const query = document.evaluate(xpath, document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+      const size = query.snapshotLength;
+      for (let i = 0; i < size; ++i) {
+        results.push(query.snapshotItem(i));
+      }
+      return results;
+    }
+
     getLowerTagName(element) {
       return (element.tagName || '').toLowerCase();
     }
@@ -364,61 +387,156 @@ var xPathFinder = xPathFinder || (() => {
       return (element.type || '').toLowerCase();
     }
 
-    getElementValue(element, limit) {
-      let s = null;
-      if (typeof element['value'] !== 'undefined') {
-        s = element['value'];
-      } else if (element['innerText'] !== 'undefined') {
-        s = element['innerText'];
-      }
-      if (this.isBlank(s)) {
-        s = '';
-      } else {
-        s = s.replace(/(?:\r\n|\r|\n)/g, ' ');
-        if (s.length > limit) {
-          s = s.substr(0, limit);
-        }
-      }
-      return s;
-    }
-
     getSortedClassList(element) {
+      const { classList } = element;
       let sortedList = [];
-      let classList = element.classList;
+
       if (classList) {
-        let size = classList.length;
+        const size = classList.length;
         for (let i = 0; i < size; i++) {
           sortedList.push(classList[i]);
         }
-        sortedList = sortedList.sort(function(a, b) {
-          return b.length - a.length
-        });
+        sortedList = this.sortByLength(sortedList);
       }
       return sortedList;
+    }
+
+    getLongestValue(element) {
+      const { value } = element;
+      return this.getLongestPartForRobot(value, 1, 80);
+    }
+
+    getLongestText(element) {
+      const { textContent } = element;
+      return this.getLongestPartForRobot(textContent, 3, 80);
+    }
+
+    getLongestPartForRobot(st, min, max) {
+      const arr = this.splitStrByNewline(st, min, max);
+      if (arr.length) {
+        const s = arr[arr.length - 1];
+        return this.replaceRobotSpecialChars(s);
+      } else {
+        return '';
+      }
+    }
+
+    replaceRobotSpecialChars(st) {
+      const size = st.length;
+      const buf = [];
+      let c = null;
+      let last = null;
+
+      for (let i = 0; i < size; i++) {
+        c = st.charAt(i);
+        if (c === '\t') {
+          buf.push('${TAB}');
+        } else if (c === ' ' && last === ' ') {
+          buf.push('${SPACE}');
+        } else {
+          buf.push(c);
+        }
+        last = c;
+      }
+      return buf.join('');
+    }
+
+    splitStrByNewline(st, min, max) {
+      let arr = [];
+      if (st != null) {
+        `${st}`.split(/\r?\n/).forEach((s) => {
+          s = s.trim();
+          if (s.length > max) {
+            arr.push(this.substr(s, 0, max));
+          } else if (s.length >= min) {
+            arr.push(s);
+          }
+        });
+        arr = this.sortByLength(arr);
+      }
+      return arr;
+    }
+
+    substr(st, from, length) {
+      const limit = from + length;
+      const buf = [];
+      let i = from;
+      let c = '';
+
+      do {
+        buf.push(c);
+        c = st.charAt(i++);
+      } while (!this.isSpecialChar(c) || i <= limit);
+      return buf.join('');
+    }
+
+    sortByLength(arr) {
+      return arr.sort(function(a, b) {
+        return b.length - a.length;
+      });
     }
 
     /**
      * Find unique path to an element by this order: id, name, class
      * @param {DOMElement} element Target element 
-     * @param {boolean} checkCssClass Set true to check element's class list 
+     * @param {boolean} isFirst Set true if element is the selected target 
      */
-    findUniqPath(element, checkCssClass) {
+    findUniqPath(element, isFirst) {
+      const { id, name, value, textContent } = element;
+      const tagName = this.getLowerTagName(element);
       let path = null;
-      let id = element.id;
-      let name = element.name;
-      let tagName = this.getLowerTagName(element);
+
       if (!this.isBlank(id) && this.isUniqSelector(`#${id}`)) {
         path = `*[@id="${id}"]`;
       } else if (!this.isBlank(id) && this.isUniqSelector(`${tagName}[id="${id}"]`)) {
         path = `${tagName}[@id="${id}"]`;
       } else if (!this.isBlank(name) && this.isUniqSelector(`${tagName}[name="${name}"]`)) {
         path = `${tagName}[@name="${name}"]`;
-      } else if (checkCssClass) {
-        let classList = this.getSortedClassList(element);
-        let size = classList.length;
+      } else if (isFirst) {
+        // Detect unique path by text
+        const texts = this.splitStrByNewline(textContent, 3, 50);
+        if (texts.length) {
+          const size = texts.length;
+          for (let i = 0; i < size; i++) {
+            let v = `*[contains(text(), "${texts[i]}")]`
+            if (this.isUniqXPath(`//${v}`)) {
+              path = v;
+              break;
+            }
+          }
+        }
+        // Detect unique path by value
+        if (!path && !this.isBlank(value)) {
+          const v = `*[@value="${value}"]`
+          if (this.isUniqXPath(`//${v}`)) {
+            path = v;
+          }
+        }
+        // Detect unique path by CSS class name
+        if (!path) {
+          const classList = this.getSortedClassList(element);
+          const size = classList.length;
+          let className;
+          for (let i = 0; i < size; i++) {
+            className = classList[i];
+            if (!this.isBlank(className) &&
+              this.isUniqSelector(`${tagName}.${className}`)
+            ) {
+              path = `${tagName}[contains(@class, "${className}")]`;
+              break;
+            }
+          }
+        }
+      } else {
+        // Detect unique path by short CSS class name
+        const classList = this.getSortedClassList(element);
+        const size = classList.length;
+        let className;
         for (let i = 0; i < size; i++) {
-          let className = classList[i];
-          if (!this.isBlank(className) && this.isUniqSelector(`${tagName}.${className}`)) {
+          className = classList[i];
+          if (!this.isBlank(className) && className.length <= 20 &&
+            this.isUniqSelector(`${tagName}.${className}`)
+          ) {
             path = `${tagName}[contains(@class, "${className}")]`;
             break;
           }
@@ -441,26 +559,23 @@ var xPathFinder = xPathFinder || (() => {
     }
 
     createRobotPasswordCmds(info, buf) {
-      if (this.isBlank(info.content)) {
-        buf.push(`clear element text  ${info.xpath}`);
-      } else {
-        buf.push(`input password  ${info.xpath}  ${info.content}`);
-      }
+      buf.push(`clear element text  ${info.xpath}`);
+      buf.push(`input password  ${info.xpath}  your-test-password`);
       buf.push(`press keys  ${info.xpath}  RETURN`);
     }
 
     createRobotTextFieldCmds(info, buf) {
-      if (this.isBlank(info.content)) {
+      if (this.isBlank(info.value)) {
         buf.push(`clear element text  ${info.xpath}`);
-        buf.push(`input text  ${info.xpath}  something-you-know`);
+        buf.push(`input text  ${info.xpath}  your-test-value`);
       } else {
-        buf.push(`input text  ${info.xpath}  ${info.content}`);
+        buf.push(`input text  ${info.xpath}  ${info.value}`);
         if (info.tagName === 'input') {
-          buf.push(`textfield value should be  ${info.xpath}  ${info.content}`);
-          buf.push(`textfield should contain  ${info.xpath}  ${info.content}`);
+          buf.push(`textfield value should be  ${info.xpath}  ${info.value}`);
+          buf.push(`textfield should contain  ${info.xpath}  ${info.value}`);
         } else if (info.tagName === 'textarea') {
-          buf.push(`textarea value should be  ${info.xpath}  ${info.content}`);
-          buf.push(`textarea should contain  ${info.xpath}  ${info.content}`);
+          buf.push(`textarea value should be  ${info.xpath}  ${info.value}`);
+          buf.push(`textarea should contain  ${info.xpath}  ${info.value}`);
         }
       }
       if (info.tagName === 'input') {
@@ -469,9 +584,9 @@ var xPathFinder = xPathFinder || (() => {
     }
 
     createRobotTextCmds(info, buf) {
-      if (!this.isBlank(info.content)) {
-        buf.push(`element should contain  ${info.xpath}  ${info.content}`);
-        buf.push(`element text should be  ${info.xpath}  ${info.content}`);
+      if (!this.isBlank(info.text) && info.xpath.indexOf(info.text) === -1) {
+        buf.push(`element should contain  ${info.xpath}  ${info.text}`);
+        buf.push(`element text should be  ${info.xpath}  ${info.text}`);
       }
     }
 
@@ -486,10 +601,11 @@ var xPathFinder = xPathFinder || (() => {
         type: this.getLowerType(element),
         disabled: this.isElementDisabled(element),
         hidden: this.isElementHidden(element),
-        content: this.getElementValue(element, 50),
+        text: this.getLongestText(element),
+        value: this.getLongestValue(element),
         xpath
       };
-      const buf = [];
+      const buf = [xpath];
 
       switch (info.tagName) {
         case 'input':
@@ -519,11 +635,12 @@ var xPathFinder = xPathFinder || (() => {
           this.createRobotTextCmds(info, buf);
           this.createRobotStatusCmds(info, buf);
           buf.push(`wait until page contains element  ${info.xpath}`);
-          if (!this.isBlank(info.content)) {
-            buf.push(`wait until page contains  ${info.content}`);
+          if (!this.isBlank(info.text)) {
+            buf.push(`wait until page contains  ${info.text}`);
           }
       }
-      console.log('[xPath 2] Robot commands:', '\n\t' + buf.join('\n\t'));
+
+      console.log('[xPath 2] Robot command suggestions:', '\n\t' + buf.join('\n\t'));
     }
   }
 

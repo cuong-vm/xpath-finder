@@ -332,7 +332,7 @@ var xPathFinder = xPathFinder || (() => {
     }
 
     isBlank(s) {
-      return s == null || s.trim() === '';
+      return s == null || (typeof s.trim !== 'undefined' && s.trim() === '');
     }
 
     isSpecialChar(c) {
@@ -379,6 +379,10 @@ var xPathFinder = xPathFinder || (() => {
       return results;
     }
 
+    getValue(element) {
+      return typeof element.value === 'undefined' ? '' : element.value;
+    }
+
     getLowerTagName(element) {
       return (element.tagName || '').toLowerCase();
     }
@@ -402,8 +406,7 @@ var xPathFinder = xPathFinder || (() => {
     }
 
     getLongestValue(element) {
-      const { value } = element;
-      return this.getLongestPartForRobot(value, 1, 80);
+      return this.getLongestPartForRobot(this.getValue(element), 1, 80);
     }
 
     getLongestText(element) {
@@ -482,8 +485,9 @@ var xPathFinder = xPathFinder || (() => {
      * @param {boolean} isFirst Set true if element is the selected target 
      */
     findUniqPath(element, isFirst) {
-      const { id, name, value, textContent } = element;
+      const { id, name, textContent } = element;
       const tagName = this.getLowerTagName(element);
+      const value = this.getValue(element);
       let path = null;
 
       if (!this.isBlank(id) && this.isUniqSelector(`#${id}`)) {
